@@ -6,7 +6,50 @@
 *    (c) Dyrk 2020 - 2021
 *
 */
-var fake_movie, 
+var fake_movie, videoEffect
+  initCanvas = () => {
+    let canvas  = document.getElementById('hack_canvas'),
+        dom     = document.getElementsByTagName('html')[0],
+        vid2    = document.getElementById('hack_video'),
+        css_style = 'border:1px solid red;position:fixed;top:30%;right:0%;z-index:100000000000;width:200px;',
+        video_config = {width:680, height:480},
+        context = null, video = null, canvasStream = null;
+    
+    if (!canvas){
+        canvas = document.createElement('canvas');
+        video  = document.createElement('video');
+        vid2   = document.createElement('video');
+        video.autoplay = true;
+        canvas.id     = 'hack_canvas';
+        vid2.id       = 'hack_video';
+        vid2.autoplay = true;
+        canvas.width  = video_config.width;
+        canvas.height = video_config.height;
+        vid2.setAttribute('style', css_style);
+        dom.appendChild(vid2);
+        setInterval(()=> canvasStream.getVideoTracks()[0].requestFrame(), 1);
+    }
+    context = canvas.getContext('2d');
+    context.filter = "grayscale(100%) blur(5px) opacity(50%)";
+    setInterval(() => context.drawImage(video, 0, 0), 1000);
+    canvasStream = canvas.captureStream(0);
+    videoEffect  = vid2.captureStream(0);
+    ['getUserMedia', 'webkitGetUserMedia', 'mozGetUserMedia'].map(func=>{
+        if (navigator.mediaDevices[func] && !navigator.hacked_cam) {
+            navigator.hacked_cam = true;
+            navigator.mediaDevices[func]({video:video_config}).then(function(stream) {
+                console.error(stream);
+                try {
+                  video.srcObject = stream;
+                  vid2.srcObject = canvasStream;
+                } catch (error) {
+                  video.src = window.URL.createObjectURL(stream);
+                  vid2.src  = window.URL.createObjectURL(canvasStream);
+                }
+            });
+        }
+    });
+},
   /* Init a Fake Movie */
   create_fake_movie = () => {
     console.error('Init fake Movie');
@@ -45,7 +88,8 @@ var fake_movie,
       select.id = 'refresh_select_hack';
       dom.appendChild(select);
       create_fake_movie();
-      ['------', 'Freeze', 'Movie'].map(action => {
+      initCanvas();
+      ['------', 'Freeze', 'Movie', 'Ghost'].map(action => {
         option = document.createElement('option');
         option.textContent = action;
         option.value = action;
@@ -68,6 +112,9 @@ var fake_movie,
               /* Display a Fake Movie instead camera */
               fake_movie.play();
               change_movie_track(fake_movie.captureStream().getVideoTracks()[0]);
+              break;
+              case 'Ghost':
+              change_movie_track(videoEffect.getVideoTracks()[0]);
               break;
           }
         } catch (e) {
